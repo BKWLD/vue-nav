@@ -16,7 +16,7 @@ export default
 			default: true
 
 	data: ->
-		keyboardFocusIndex: 0
+		focusedItemIndex: 0
 
 	methods:
 
@@ -72,7 +72,7 @@ export default
 			el = @navItemRefs[index]
 			if !el then console.warn("base-nav setFocusToIndex: can't set focus because navItemRefs[#{index}] doesn't exist.")
 			@navItemRefs[index]?.focus?()
-			@keyboardFocusIndex = index
+			@focusedItemIndex = index
 			# If subnav is open, then close the subnav.
 			if @subnavOpen then @closeSubnav()
 

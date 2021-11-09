@@ -5,6 +5,7 @@
 	:class='classes'
 )
 	.overlay(
+		v-if='clickOutsideToClose'
 		v-show='subnavOpen'
 		@click='onOverlayClick'
 	)
@@ -15,6 +16,7 @@
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <script lang='coffee'>
+import emitter from 'tiny-emitter/instance'
 import { ReactiveProvideMixin } from 'vue-reactive-provide'
 import PointerEvents from '../mixins/pointer-events.coffee'
 import KeyboardEvents from '../mixins/keyboard-events.coffee'
@@ -28,12 +30,12 @@ export default
 		ReactiveProvideMixin({
 			name: 'baseNavInject',
 			include: [
-				'navId'
+				'id'
 				'enterActiveClass'
 				'leaveActiveClass'
 				'activeSubnavIndex'
 				'enableArrowKeys'
-				'keyboardFocusIndex'
+				'focusedItemIndex'
 				'keyboardOrientation'
 			]
 		})
@@ -48,24 +50,22 @@ export default
 		closeOnRouteChange:
 			type: Boolean
 			default: true
-
+		
 		# Unique string used to connect this nav's items and subnavs
-		navId:
+		id:
 			type: String
-			default: 'base-nav'
+			default: 'vue-nav'
 
 	data: ->
+		# So we know how many items we have and can set/loop focus.
+		navItems: []
 		activeSubnavIndex: -1
 		prevActiveSubnavIndex: -1
-		# Array of refs created via 'navitem-mounted' events
-		navItemRefs: []
-		# Array of refs created via 'subnav-mounted' events
-		subnavRefs: []
 
 	computed:
 		classes: -> [
 			'base-nav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
-			@navId # Your custom wrapper class name.  We need this for keyboard-events mixin.
+			@id # Your custom wrapper class name.  We need this for keyboard-events mixin.
 			if @renderSubnavBehind then 'subnav-behind' else 'subnav-in-front'
 		]
 
@@ -96,11 +96,12 @@ export default
 			@$emit 'update:subnavOpen', @subnavOpen
 
 	mounted: ->
-		# Listen for child events
-		@$el.addEventListener 'basenav', @onBaseNavEvent
+		# Listen for events
+		emitter.on 'vue-nav', @onEvent
 
 	beforeDestroy: ->
-		@$el.removeEventListener 'basenav', @onBaseNavEvent
+		# Unsubscribe from child events
+		emitter.off 'vue-nav', @onEvent
 
 	methods:
 
@@ -117,38 +118,29 @@ export default
 
 		closeUs: ->
 			# When we think we'll be closed, set the focus index back to the start.
-			@keyboardFocusIndex = 0
+			@focusedItemIndex = 0
 
-		onBaseNavEvent: (event) ->
-			# console.log 'onBaseNavEvent', event
-			{ type, index, ref } = event.detail
-			# console.log "base-nav #{@navId} event: #{type}"
+		onEvent: (args) ->
+			{ id, index, type } = args
+
+			# Do nothing if this event was emitted from a different nav.
+			return if id != @id
+
+			console.log 'onEvent', args
+			
 			switch type
 				when 'itemclick'
 					@setActiveSubnavIndex(index)
-					event.stopPropagation()
 				when 'itemblur', 'subnavblur'
 					@onBlur(index)
-					event.stopPropagation()
 				when 'returnkey'
 					@onReturnKey(event, index)
 				when 'nextkey'
 					@setFocustoNextItem(index)
-					event.stopPropagation()
 				when 'prevkey'
 					@setFocustoPrevItem(index)
-					event.stopPropagation()
 				when 'esckey'
 					@closeSubnav()
-					event.stopPropagation()
-				when 'navitem-mounted'
-					# Save this item's ref to @navItemRefs
-					@navItemRefs[index] = ref
-					event.stopPropagation()
-				when 'subnav-mounted'
-					# Save this item's ref to @subnavRefs
-					@subnavRefs[index] = ref
-					event.stopPropagation()
 
 </script>
 

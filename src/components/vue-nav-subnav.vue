@@ -7,8 +7,7 @@ transition(
 	:leave-active-class='leaveActiveClass'
 	:duration='transitionDuration'
 )
-	div(
-		:class='classes'
+	div.base-nav-subnav(
 		v-show='index == activeSubnavIndex'
 		ref='subnav'
 		@focusout='onBlur'
@@ -33,7 +32,8 @@ export default
 
 		# Hardcode subnav transition duration, if necessary.
 		transitionDuration:
-			type: [ Object, Number ]
+			type: Number
+			default: 800
 
 	computed:
 		# Injected from base-nav

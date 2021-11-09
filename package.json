@@ -8,6 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "tiny-emitter": "^2.1.0",
-    "vue-reactive-provide": "^0.3.0"
+    "vue-reactive-provide": "^0.3.0",
+    "vue-routing-anchor-parser": "^1.12.0"
   }
 }

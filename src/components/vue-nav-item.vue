@@ -1,41 +1,29 @@
 <!-- One navigation item in a base nav -->
 
 <template lang='pug'>
-//- `data-base-nav-item-index` is used by setFocusToSubnav()
-
-//- If internalUrl, then use .native events because it's a `smart-link`.
-smart-link.base-nav-item(
-	v-if='isInternalUrl'
-	:to='url'
-	v-bind='props'
-	ref='item'
-	@keydown.native='onKeydown'
-	@click.native='onClick'
-	@focusout.native='onBlur'
-)
-	slot(
-		:active='index == activeSubnavIndex'
-	)
-
-//- If not internalUrl, it's a `a` or `span`
-smart-link.base-nav-item(
-	v-else
-	v-bind='props'
-	ref='item'
+component(
+	:is='element'
 	@keydown='onKeydown'
 	@click='onClick'
 	@focusout='onBlur'
 )
-	slot(
-		:active='index == activeSubnavIndex'
+	smart-link.base-nav-item(
+		:to='url'
+		v-bind='props'
+		ref='item'
 	)
+		slot(
+			:active='index == activeSubnavIndex'
+		)
 
 </template>
 
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <script lang='coffee'>
+import emitter from 'tiny-emitter/instance'
 import { isInternal } from 'vue-routing-anchor-parser'
+HTMLElement = window?.HTMLElement || Object
 
 keycodes = Object.freeze
 	'TAB': 9
@@ -59,21 +47,25 @@ export default
 		index:
 			type: Number
 
-		# Clicking this nav-item takes you to this URL.  If url is provided, then this nav-item has no subnav.
+		# Clicking this nav-item takes you to this URL.  If we have a URL, there's no subnav.
 		url:
 			type: String
 
-		# Determines what DOM element should receive focus on keyboard navigation.  Defaults to @$el.
-		focusRef:
-			type: HTMLElement
+		# Determines what DOM element should receive focus on keyboard navigation.  Defaults to this component's smart-link.
+		focusElement:
+			type: String
+
+		# What element to wrap this component in.
+		element:
+			type: String
+			default: 'div'
 
 	computed:
 		# Injected from base-nav
-		navId: -> @baseNavInject.navId
+		id: -> @baseNavInject.id
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
-		enableArrowKeys: -> @baseNavInject.enableArrowKeys
-		keyboardFocusIndex: -> @baseNavInject.keyboardFocusIndex
-		keyboardOrientation: -> @baseNavInject.keyboardOrientation
+		focusedItemIndex: -> @baseNavInject.focusedItemIndex
+
 		# Other
 		isInternalUrl: -> if @url? then isInternal(@url) else false
 
@@ -86,18 +78,18 @@ export default
 			'aria-haspopup': !!@url
 			'aria-expanded': @index == @activeSubnavIndex
 
-		# This DOM element dispatches our events, and is attached to our event's `detail` prop.
-		itemRef: -> @focusRef || @$refs.item.$el || @$refs.item
-
 		classes: -> [
-			"#{@navId}-item-link"
+			"#{@id}-item-link"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
+
 		tabindex: ->
 			if !@enableArrowKeys then return 0
-			if (@index == @keyboardFocusIndex) then return 0 else return -1
+			if (@index == @focusedItemIndex) then return 0 else return -1
 
-		# Keyboard Events
+		##################################################################
+		## Keyboard Events
+		
 		# Get the next/prev arrow keycodes depending on keyboardOrientation.
 		keycodeNext: ->
 			return null unless @enableArrowKeys
@@ -112,27 +104,25 @@ export default
 		keycodeNullArrow2: ->
 			return null unless @enableArrowKeys
 			if @keyboardOrientation=='horizontal' then keycodes.UP else keycodes.LEFT
-		# Allow using the arrow keys as if they were return and escape.  Assume child menus are positioned
-		# below and to the right of parent menus, respectively.
-		# keycodeReturnArrow: ->
-		# 	return null unless @enableArrowKeys
-		# 	return null unless @subnavKeyboardOrientation?
-		# 	if @keyboardOrientation=='horizontal' then keycodes.DOWN else keycodes.RIGHT
-		# keycodeEscArrow: ->
-		# 	return null unless @enableArrowKeys
-		# 	return null unless @subnavKeyboardOrientation?
-		# 	if @subnavKeyboardOrientation=='horizontal' then keycodes.UP else keycodes.LEFT
 
 
-	# On mounted, send an event so base-nav has each nav-item's index and ref
-	mounted: -> @$nextTick ->
-		@sendEvent('navitem-mounted')
+	mounted: ->
+		# Listen for events
+		emitter.on 'vue-nav', @onEvent
+		# Emit event, so vue-nav knows how many items it has
+		sendEvent('')
+
+	beforeDestroy: ->
+		# Unsubscribe from child events
+		emitter.off 'vue-nav', @onEvent
 
 	methods:
-		# Capture pointer and key events, and send custom events to base-nav.
+		onEvent: (args) ->
+			# console.log 'onEvent', args
+			{ id, type, index } = args
+		
 		sendEvent: (type) ->
-			customEvent = new CustomEvent 'basenav', {bubbles: true, detail: { navId:@navId, type:type, index:@index, ref:@itemRef } }
-			@itemRef.dispatchEvent customEvent
+			emitter.emit 'vue-nav', { id: @id, index: @index, type: type }
 
 		# Pointer events
 		onClick: (event) ->
@@ -146,7 +136,7 @@ export default
 
 		# Key events
 		onKeydown: (event) ->
-			# console.log 'onKeydown', @navId, event.keyCode, @keyboardOrientation
+			# console.log 'onKeydown', @id, event.keyCode, @keyboardOrientation
 			key = event.keyCode
 			if key==keycodes.SPACE or key==keycodes.RETURN or key==@keycodeReturnArrow
 				@sendEvent('returnkey')
@@ -168,6 +158,7 @@ export default
 				# Stop propagation because these keys might be bound in a parent base-nav and do unwanted things
 				event.stopPropagation()
 				event.preventDefault()
+
 
 	watch:
 		# If focusRef changes after mount, update the ref in base-nav

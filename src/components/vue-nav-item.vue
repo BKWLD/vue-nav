@@ -65,7 +65,8 @@ export default
 
 		# Determines what DOM element should receive focus on keyboard navigation.  Defaults to @$el.
 		focusRef:
-			type: HTMLElement
+			# During Nuxt generate fallback to Object because window is undefined.
+			type: window?.HTMLElement || Object
 
 	computed:
 		# Injected from base-nav

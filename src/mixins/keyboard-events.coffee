@@ -34,7 +34,7 @@ export default
 				return event.stopPropagation()
 			# Else, open the subnav.
 			console.log 'onReturnKey 2'
-			@setActiveSubnavIndex index, true
+			@setActiveSubnavIndex index
 			@setFocusToSubnav(index)
 			event.stopPropagation()
 			event.preventDefault()

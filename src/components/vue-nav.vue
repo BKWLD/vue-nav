@@ -111,8 +111,8 @@ export default
 
 	methods:
 
-		setActiveSubnavIndex: (index, closeIfAlreadyActive=true) ->
-			# console.log 'vue-nav', @id, 'setActiveSubnavIndex', index
+		setActiveSubnavIndex: (index, fromKeyboardEvent=false, closeIfAlreadyActive=true) ->
+			# console.log 'vue-nav', @id, 'setActiveSubnavIndex', {index, fromKeyboardEvent}
 			@prevActiveSubnavIndex = @activeSubnavIndex
 			# If index is -1 then close subnav.  If toggling the already active subnav, then close subnav.
 			if (index==@activeSubnavIndex and closeIfAlreadyActive) || (index == -1)
@@ -120,26 +120,26 @@ export default
 				@activeSubnavIndex = -1
 				# Set focus to a menu item
 				# console.log 'setting setFocusToIndex', @prevActiveSubnavIndex
-				@setFocusToIndex @prevActiveSubnavIndex
+				if fromKeyboardEvent then @setFocusToIndex @prevActiveSubnavIndex
 			else
 				# Open the new subnav
 				@activeSubnavIndex = index
 				# Set focusedItemIndex to -1, so that it can be activated later
 				@focusedItemIndex = -1
 
-		closeSubnav: -> 
-			# console.log 'vue-nav', @id, 'closeSubnav'
-			@setActiveSubnavIndex -1
+		closeSubnav: (fromKeyboardEvent=false) -> 
+			# console.log 'vue-nav', @id, 'closeSubnav', {fromKeyboardEvent}
+			@setActiveSubnavIndex -1, fromKeyboardEvent
 
 		closeUs: ->
 			# When we think we'll be closed, set the focus index back to the start.
-			@focusedItemIndex = 0
+			@focusedItemIndex = -1
 
 		onNavItemEvent: ({ type, id, index, focusElement }) ->
 			# console.log 'vue-nav', @id, 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
 			
 			if id == @childId and type == 'esckey'
-				return @closeSubnav()
+				return @closeSubnav(true)
 			
 			# Do nothing if this event was emitted from a different nav.
 			return if id != @id
@@ -183,7 +183,7 @@ export default
 		activeSubnavIndex: ->
 			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
 			return if @activeSubnavIndex==-1
-			@setFocusToSubnav(@activeSubnavIndex)
+			# @setFocusToSubnav(@activeSubnavIndex)
 
 		subnavOpen: ->
 			@$emit 'update:subnavOpen', @subnavOpen

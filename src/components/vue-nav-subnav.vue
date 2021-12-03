@@ -9,7 +9,7 @@ transition(
 )
 	div.base-nav-subnav(
 		v-show='index == activeSubnavIndex'
-		ref='subnav'
+		ref='subnavWrapperRef'
 		@focusout='onBlur'
 	)
 		slot(
@@ -23,12 +23,19 @@ transition(
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <script lang='coffee'>
+import emitter from 'tiny-emitter/instance'
+
 export default
 	inject: ['baseNavInject']
 
 	props:
 		index:
 			type: Number
+
+		# By default, the smart-link receives keyboard focus.  If you want an element inside the slot
+		# to receive keyboard focus, then pass in a querySelector string.
+		focusElement:
+			type: String
 
 		# Hardcode subnav transition duration, if necessary.
 		transitionDuration:
@@ -37,31 +44,46 @@ export default
 
 	computed:
 		# Injected from base-nav
-		navId: -> @baseNavInject.navId
+		id: -> @baseNavInject.id
 		enterActiveClass: -> @baseNavInject.enterActiveClass
 		leaveActiveClass: -> @baseNavInject.leaveActiveClass
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
-		# Other
-		subnavRef: -> @$refs.subnav.$el || @$refs.subnav
 		classes: -> [
 			'base-nav-subnav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
-			"#{@navId}-subnav"
+			"#{@id}-subnav"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
 
 	# On mounted, send an event so base-nav has each subnav's index and ref
 	mounted: -> @$nextTick ->
-		@sendEvent('subnav-mounted')
+		@sendEvent('mounted')
 
 	methods:
-		# Capture pointer and key events, and send custom events to base-nav.
 		sendEvent: (type) ->
-			customEvent = new CustomEvent 'basenav', {bubbles: true, detail: { navId:@navId, type:type, index:@index, ref:@subnavRef } }
-			@subnavRef.dispatchEvent customEvent
+			# console.log 'subnav sendEvent', type
+			emitter.emit 'vue-nav-subnav', {
+				type
+				id: @id
+				index: @index
+				subnavFocusElement: @getSubnavFocusElement()
+				subnavWrapperElement: @getSubnavWrapperElement()
+			}
 
 		onBlur: (event) ->
-			@sendEvent('subnavblur')
+			@sendEvent('blur')
 			event.stopPropagation()
+
+		# Get the DOM element that should receive keyboard focus.
+		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.
+		getSubnavFocusElement: -> 
+			return @$el.querySelector(@focusElement) if @focusElement
+			return @getSubnavWrapperElement()
+
+		getSubnavWrapperElement: -> return @$refs.subnavWrapperRef.$el || @$refs.subnavWrapperRef
+
+	watch:
+		# If focusElement changes after mount, communicate this change to base-nav.
+		focusElement: -> @sendEvent('focusElement changed')
 
 </script>
 

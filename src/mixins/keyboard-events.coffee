@@ -30,10 +30,10 @@ export default
 			# console.log @id, 'onReturnKey', index
 			# If no subnav, then assume it's a link.  Stop propagation but don't prevent default.
 			if !@subnavFocusElements[index]
-				console.log 'onReturnKey 1'
+				# console.log 'onReturnKey 1'
 				return event.stopPropagation()
 			# Else, open the subnav.
-			console.log 'onReturnKey 2'
+			# console.log 'onReturnKey 2'
 			@setActiveSubnavIndex index
 			@setFocusToSubnav(index)
 			event.stopPropagation()

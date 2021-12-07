@@ -1,4 +1,4 @@
-<!-- Optional subnav that's shown when you click a base-nav-item -->
+<!-- Optional subnav that's shown when you click a vue-nav-item -->
 
 <template lang='pug'>
 transition(
@@ -7,7 +7,7 @@ transition(
 	:leave-active-class='leaveActiveClass'
 	:duration='transitionDuration'
 )
-	div.base-nav-subnav(
+	div.vue-nav-subnav(
 		v-show='index == activeSubnavIndex'
 		ref='subnavWrapperRef'
 		@focusout='onBlur'
@@ -43,18 +43,18 @@ export default
 			default: 800
 
 	computed:
-		# Injected from base-nav
+		# Injected from vue-nav
 		id: -> @baseNavInject.id
 		enterActiveClass: -> @baseNavInject.enterActiveClass
 		leaveActiveClass: -> @baseNavInject.leaveActiveClass
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
 		classes: -> [
-			'base-nav-subnav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
+			'vue-nav-subnav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
 			"#{@id}-subnav"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
 
-	# On mounted, send an event so base-nav has each subnav's index and ref
+	# On mounted, send an event so vue-nav has each subnav's index and ref
 	mounted: -> @$nextTick ->
 		@sendEvent('mounted')
 
@@ -82,7 +82,7 @@ export default
 		getSubnavWrapperElement: -> return @$refs.subnavWrapperRef.$el || @$refs.subnavWrapperRef
 
 	watch:
-		# If focusElement changes after mount, communicate this change to base-nav.
+		# If focusElement changes after mount, communicate this change to vue-nav.
 		focusElement: -> @sendEvent('focusElement changed')
 
 </script>

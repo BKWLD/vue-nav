@@ -1,7 +1,7 @@
 <!--  -->
 
 <template lang='pug'>
-.base-nav(
+.vue-nav(
 	:class='classes'
 )
 	.overlay(

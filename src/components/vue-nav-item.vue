@@ -7,7 +7,7 @@ component(
 	@click='onClick'
 	@focusout='onBlur'
 )
-	smart-link.base-nav-item(
+	smart-link.vue-nav-item(
 		:to='url'
 		v-bind='smartLinkProps'
 		ref='smartLinkRef'
@@ -62,7 +62,7 @@ export default
 			default: 'div'
 
 	computed:
-		# Injected from base-nav
+		# Injected from vue-nav
 		id: -> @baseNavInject.id
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
 		focusedItemIndex: -> @baseNavInject.focusedItemIndex
@@ -76,7 +76,7 @@ export default
 		smartLinkProps: ->
 			class: @classes
 			role: 'menuitem'
-			'data-base-nav-item-index': @index
+			'data-vue-nav-item-index': @index
 			tabindex: @tabindex
 			'aria-haspopup': !!@url
 			'aria-expanded': @index == @activeSubnavIndex

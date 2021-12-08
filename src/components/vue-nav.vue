@@ -53,11 +53,6 @@ export default
 		childId:
 			type: String
 
-		# Render subnav behind item-head using z-index.
-		renderSubnavBehind:
-			type: Boolean
-			default: true
-
 		# If true, the subnav closes when the route changes.
 		closeOnRouteChange:
 			type: Boolean
@@ -78,9 +73,7 @@ export default
 
 	computed:
 		classes: -> [
-			'base-nav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
 			@id # Your custom wrapper class name.  We need this for keyboard-events mixin.
-			if @renderSubnavBehind then 'subnav-behind' else 'subnav-in-front'
 		]
 
 		subnavOpen: -> @activeSubnavIndex != -1
@@ -133,7 +126,7 @@ export default
 
 		closeUs: ->
 			# When we think we'll be closed, set the focus index back to the start.
-			@focusedItemIndex = -1
+			@focusedItemIndex = 0
 
 		onNavItemEvent: ({ type, id, index, focusElement }) ->
 			# console.log 'vue-nav', @id, 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
@@ -199,19 +192,5 @@ export default
 	height 200vh
 	left -50vw
 	top -50vh
-
-.items, .subnavs
-	position relative
-
-.base-nav-item
-	cursor pointer
-
-.subnav-behind
-	.items
-		z-index 1
-
-.subnav-in-front
-	.subnavs
-		z-index 1
 
 </style>

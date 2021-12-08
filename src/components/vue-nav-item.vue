@@ -158,7 +158,7 @@ export default
 					event.preventDefault()
 					event.stopPropagation()
 				when @keycodeNullArrow1, @keycodeNullArrow2
-					# Stop propagation because these keys might be bound in a parent base-nav and do unwanted things
+					# Stop propagation because these keys might be bound in a parent vue-nav and do unwanted things
 					event.stopPropagation()
 					event.preventDefault()
 

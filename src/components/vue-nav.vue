@@ -1,10 +1,11 @@
 <!--  -->
 
 <template lang='pug'>
-.base-nav(
+.vue-nav(
 	:class='classes'
 )
 	.overlay(
+		v-if='clickOutsideToClose'
 		v-show='subnavOpen'
 		@click='onOverlayClick'
 	)
@@ -15,12 +16,13 @@
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <script lang='coffee'>
+import emitter from 'tiny-emitter/instance'
 import { ReactiveProvideMixin } from 'vue-reactive-provide'
 import PointerEvents from '../mixins/pointer-events.coffee'
 import KeyboardEvents from '../mixins/keyboard-events.coffee'
 
 export default
-	name: 'BaseNav'
+	name: 'VueNav'
 
 	mixins: [
 		PointerEvents
@@ -28,45 +30,50 @@ export default
 		ReactiveProvideMixin({
 			name: 'baseNavInject',
 			include: [
-				'navId'
+				'id'
 				'enterActiveClass'
 				'leaveActiveClass'
 				'activeSubnavIndex'
 				'enableArrowKeys'
-				'keyboardFocusIndex'
+				'focusedItemIndex'
 				'keyboardOrientation'
 			]
 		})
 	]
 
 	props:
-		# Render subnav behind item-head using z-index.
-		renderSubnavBehind:
-			type: Boolean
-			default: true
+		# Unique ID that links vue-nav and vue-nav-items
+		id:
+			type: String
+			required: true
 
+		# ID of the direct child vue-nav.  
+		# This is only required if you want to close the subnav 
+		# when you hit the escape key.
+		childId:
+			type: String
+
+		# If true, the subnav closes when the route changes.
 		closeOnRouteChange:
 			type: Boolean
 			default: true
-
-		# Unique string used to connect this nav's items and subnavs
-		navId:
-			type: String
-			default: 'base-nav'
-
+		
 	data: ->
+		# DOM element in each vue-nav-item that should receive focus
+		navFocusElements: []
+		# DOM element in each vue-nav-subnav that should receive focus.
+		subnavFocusElements: []
+		# DOM element that wraps each vue-nav-subnav.
+		subnavWrapperElements: []
+		# Zero-based index of the vue-nav-subnav that is currently open/expanded.
 		activeSubnavIndex: -1
+		# Zero-based index of the vue-nav-subnav that was open before the current one.
+		# Used only by @enterActiveClass, an animation helper.
 		prevActiveSubnavIndex: -1
-		# Array of refs created via 'navitem-mounted' events
-		navItemRefs: []
-		# Array of refs created via 'subnav-mounted' events
-		subnavRefs: []
 
 	computed:
 		classes: -> [
-			'base-nav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
-			@navId # Your custom wrapper class name.  We need this for keyboard-events mixin.
-			if @renderSubnavBehind then 'subnav-behind' else 'subnav-in-front'
+			@id # Your custom wrapper class name.  We need this for keyboard-events mixin.
 		]
 
 		subnavOpen: -> @activeSubnavIndex != -1
@@ -85,70 +92,94 @@ export default
 			return "subnav-leave-active fast" if @subnavOpen
 			"subnav-leave-active"
 
-	watch:
-		# Trigger closeSubnav() on route change
-		$route: -> if @closeOnRouteChange then @closeSubnav()
-
-		# Emit events to parent
-		activeSubnavIndex: ->
-			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
-		subnavOpen: ->
-			@$emit 'update:subnavOpen', @subnavOpen
-
 	mounted: ->
-		# Listen for child events
-		@$el.addEventListener 'basenav', @onBaseNavEvent
+		# Listen for events
+		emitter.on 'vue-nav-item', @onNavItemEvent
+		emitter.on 'vue-nav-subnav', @onSubnavEvent
 
 	beforeDestroy: ->
-		@$el.removeEventListener 'basenav', @onBaseNavEvent
+		# Unsubscribe from child events
+		emitter.off 'vue-nav-item', @onNavItemEvent
+		emitter.off 'vue-nav-subnav', @onSubnavEvent
 
 	methods:
 
-		setActiveSubnavIndex: (index, closeIfAlreadyActive=true) ->
+		setActiveSubnavIndex: (index, fromKeyboardEvent=false, closeIfAlreadyActive=true) ->
+			# console.log 'vue-nav', @id, 'setActiveSubnavIndex', {index, fromKeyboardEvent}
 			@prevActiveSubnavIndex = @activeSubnavIndex
-			if index==@activeSubnavIndex and closeIfAlreadyActive
+			# If index is -1 then close subnav.  If toggling the already active subnav, then close subnav.
+			if (index==@activeSubnavIndex and closeIfAlreadyActive) || (index == -1)
 				# Close the subnav
 				@activeSubnavIndex = -1
+				# Set focus to a menu item
+				# console.log 'setting setFocusToIndex', @prevActiveSubnavIndex
+				if fromKeyboardEvent then @setFocusToIndex @prevActiveSubnavIndex
 			else
 				# Open the new subnav
 				@activeSubnavIndex = index
+				# Set focusedItemIndex to -1, so that it can be activated later
+				@focusedItemIndex = -1
 
-		closeSubnav: -> @setActiveSubnavIndex -1
+		closeSubnav: (fromKeyboardEvent=false) -> 
+			# console.log 'vue-nav', @id, 'closeSubnav', {fromKeyboardEvent}
+			@setActiveSubnavIndex -1, fromKeyboardEvent
 
 		closeUs: ->
 			# When we think we'll be closed, set the focus index back to the start.
-			@keyboardFocusIndex = 0
+			@focusedItemIndex = 0
 
-		onBaseNavEvent: (event) ->
-			# console.log 'onBaseNavEvent', event
-			{ type, index, ref } = event.detail
-			# console.log "base-nav #{@navId} event: #{type}"
+		onNavItemEvent: ({ type, id, index, focusElement }) ->
+			# console.log 'vue-nav', @id, 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
+			
+			if id == @childId and type == 'esckey'
+				return @closeSubnav(true)
+			
+			# Do nothing if this event was emitted from a different nav.
+			return if id != @id
+
+			# Save ref
+			@navFocusElements[index] = focusElement
+			
 			switch type
-				when 'itemclick'
+				when 'click'
 					@setActiveSubnavIndex(index)
-					event.stopPropagation()
-				when 'itemblur', 'subnavblur'
+				when 'blur', 'subnav-blur'
+					# TODO: remove this if we can.
 					@onBlur(index)
-					event.stopPropagation()
 				when 'returnkey'
 					@onReturnKey(event, index)
 				when 'nextkey'
 					@setFocustoNextItem(index)
-					event.stopPropagation()
 				when 'prevkey'
 					@setFocustoPrevItem(index)
-					event.stopPropagation()
-				when 'esckey'
+				when 'destroyed'
+					@navFocusElements.pop(index)
+
+		onSubnavEvent: ({ type, id, index, subnavFocusElement, subnavWrapperElement }) ->
+			# console.log 'onSubnavEvent', { type, id, index, subnavFocusElement }
+			# Do nothing if this event was emitted from a different nav.
+			return if id != @id
+
+			# Save ref
+			@subnavFocusElements[index] = subnavFocusElement
+			@subnavWrapperElements[index] = subnavWrapperElement
+			
+			switch type
+				when 'blur'
 					@closeSubnav()
-					event.stopPropagation()
-				when 'navitem-mounted'
-					# Save this item's ref to @navItemRefs
-					@navItemRefs[index] = ref
-					event.stopPropagation()
-				when 'subnav-mounted'
-					# Save this item's ref to @subnavRefs
-					@subnavRefs[index] = ref
-					event.stopPropagation()
+
+	watch:
+		# Trigger closeSubnav() on route change
+		$route: -> if @closeOnRouteChange then @closeSubnav()
+
+		# Emit events to parent via Vue events
+		activeSubnavIndex: ->
+			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
+			return if @activeSubnavIndex==-1
+			# @setFocusToSubnav(@activeSubnavIndex)
+
+		subnavOpen: ->
+			@$emit 'update:subnavOpen', @subnavOpen
 
 </script>
 
@@ -161,19 +192,5 @@ export default
 	height 200vh
 	left -50vw
 	top -50vh
-
-.items, .subnavs
-	position relative
-
-.base-nav-item
-	cursor pointer
-
-.subnav-behind
-	.items
-		z-index 1
-
-.subnav-in-front
-	.subnavs
-		z-index 1
 
 </style>

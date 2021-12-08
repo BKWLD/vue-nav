@@ -1,41 +1,29 @@
 <!-- One navigation item in a base nav -->
 
 <template lang='pug'>
-//- `data-base-nav-item-index` is used by setFocusToSubnav()
-
-//- If internalUrl, then use .native events because it's a `smart-link`.
-smart-link.base-nav-item(
-	v-if='isInternalUrl'
-	:to='url'
-	v-bind='props'
-	ref='item'
-	@keydown.native='onKeydown'
-	@click.native='onClick'
-	@focusout.native='onBlur'
-)
-	slot(
-		:active='index == activeSubnavIndex'
-	)
-
-//- If not internalUrl, it's a `a` or `span`
-smart-link.base-nav-item(
-	v-else
-	v-bind='props'
-	ref='item'
+component(
+	:is='element'
 	@keydown='onKeydown'
 	@click='onClick'
 	@focusout='onBlur'
 )
-	slot(
-		:active='index == activeSubnavIndex'
+	smart-link.vue-nav-item(
+		:to='url'
+		v-bind='smartLinkProps'
+		ref='smartLinkRef'
 	)
+		slot(
+			:active='index == activeSubnavIndex'
+		)
 
 </template>
 
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <script lang='coffee'>
+import emitter from 'tiny-emitter/instance'
 import { isInternal } from 'vue-routing-anchor-parser'
+HTMLElement = window?.HTMLElement || Object # Define HTMLElement for SSG
 
 keycodes = Object.freeze
 	'TAB': 9
@@ -59,46 +47,52 @@ export default
 		index:
 			type: Number
 
-		# Clicking this nav-item takes you to this URL.  If url is provided, then this nav-item has no subnav.
+		# Clicking this nav-item takes you to this URL.  If we have a URL, there's no subnav.
 		url:
 			type: String
 
-		# Determines what DOM element should receive focus on keyboard navigation.  Defaults to @$el.
-		focusRef:
-			# During Nuxt generate fallback to Object because window is undefined.
-			type: window?.HTMLElement || Object
+		# By default, the smart-link receives keyboard focus.  If you want an element inside the slot
+		# to receive keyboard focus, then pass in a querySelector string.
+		focusElement:
+			type: String
+
+		# What element to wrap this component in.
+		element:
+			type: String
+			default: 'div'
 
 	computed:
-		# Injected from base-nav
-		navId: -> @baseNavInject.navId
+		# Injected from vue-nav
+		id: -> @baseNavInject.id
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
+		focusedItemIndex: -> @baseNavInject.focusedItemIndex
 		enableArrowKeys: -> @baseNavInject.enableArrowKeys
-		keyboardFocusIndex: -> @baseNavInject.keyboardFocusIndex
 		keyboardOrientation: -> @baseNavInject.keyboardOrientation
+
 		# Other
 		isInternalUrl: -> if @url? then isInternal(@url) else false
 
-		# Props
-		props: ->
+		# Props for the smart-link component
+		smartLinkProps: ->
 			class: @classes
 			role: 'menuitem'
-			'data-base-nav-item-index': @index
+			'data-vue-nav-item-index': @index
 			tabindex: @tabindex
 			'aria-haspopup': !!@url
 			'aria-expanded': @index == @activeSubnavIndex
 
-		# This DOM element dispatches our events, and is attached to our event's `detail` prop.
-		itemRef: -> @focusRef || @$refs.item.$el || @$refs.item
-
 		classes: -> [
-			"#{@navId}-item-link"
+			"#{@id}-item-link"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
+
 		tabindex: ->
 			if !@enableArrowKeys then return 0
-			if (@index == @keyboardFocusIndex) then return 0 else return -1
+			if (@index == @focusedItemIndex) then return 0 else return -1
 
-		# Keyboard Events
+		##################################################################
+		## Keyboard Events
+		
 		# Get the next/prev arrow keycodes depending on keyboardOrientation.
 		keycodeNext: ->
 			return null unless @enableArrowKeys
@@ -113,67 +107,76 @@ export default
 		keycodeNullArrow2: ->
 			return null unless @enableArrowKeys
 			if @keyboardOrientation=='horizontal' then keycodes.UP else keycodes.LEFT
-		# Allow using the arrow keys as if they were return and escape.  Assume child menus are positioned
-		# below and to the right of parent menus, respectively.
-		# keycodeReturnArrow: ->
-		# 	return null unless @enableArrowKeys
-		# 	return null unless @subnavKeyboardOrientation?
-		# 	if @keyboardOrientation=='horizontal' then keycodes.DOWN else keycodes.RIGHT
-		# keycodeEscArrow: ->
-		# 	return null unless @enableArrowKeys
-		# 	return null unless @subnavKeyboardOrientation?
-		# 	if @subnavKeyboardOrientation=='horizontal' then keycodes.UP else keycodes.LEFT
 
 
-	# On mounted, send an event so base-nav has each nav-item's index and ref
-	mounted: -> @$nextTick ->
-		@sendEvent('navitem-mounted')
+	mounted: ->
+		# console.log 'vue-nav-item mounted', @$el.innerText
+		# Emit event, so vue-nav knows how many items it has
+		@$nextTick -> @sendEvent('mounted')
+
+	beforeDestroy: ->
+		@sendEvent('destroyed')
 
 	methods:
-		# Capture pointer and key events, and send custom events to base-nav.
+		
 		sendEvent: (type) ->
-			customEvent = new CustomEvent 'basenav', {bubbles: true, detail: { navId:@navId, type:type, index:@index, ref:@itemRef } }
-			@itemRef.dispatchEvent customEvent
+			# console.log 'vue-nav-item', @id, 'sendEvent', type
+			emitter.emit 'vue-nav-item', {
+				type
+				id: @id
+				index: @index
+				focusElement: @getFocusElement()
+			}
 
 		# Pointer events
 		onClick: (event) ->
 			return if !!@url
-			@sendEvent('itemclick')
+			@sendEvent('click')
 			event.stopPropagation()
 
 		onBlur: (event) ->
-			@sendEvent('itemblur')
+			@sendEvent('blur')
 			event.stopPropagation()
 
 		# Key events
 		onKeydown: (event) ->
-			# console.log 'onKeydown', @navId, event.keyCode, @keyboardOrientation
-			key = event.keyCode
-			if key==keycodes.SPACE or key==keycodes.RETURN or key==@keycodeReturnArrow
-				@sendEvent('returnkey')
-				event.stopPropagation()
-				# Don't prevent default, in case we hit return on a nav link.
-			if key==keycodes.ESC or key==@keycodeEscArrow
-				@sendEvent('esckey')
-				event.stopPropagation()
-				event.preventDefault()
-			if key==@keycodeNext
-				@sendEvent('nextkey')
-				event.stopPropagation()
-				event.preventDefault()
-			if key==@keycodePrev
-				@sendEvent('prevkey')
-				event.preventDefault()
-				event.stopPropagation()
-			if key==@keycodeNullArrow1 or key==@keycodeNullArrow2
-				# Stop propagation because these keys might be bound in a parent base-nav and do unwanted things
-				event.stopPropagation()
-				event.preventDefault()
+			# console.log 'onKeydown', @id, event.keyCode, @keyboardOrientation
+			switch event.keyCode
+				when keycodes.SPACE, keycodes.RETURN, @keycodeReturnArrow
+					@sendEvent('returnkey')
+					# Don't prevent default, in case we hit return on a nav link.
+				when keycodes.ESC, @keycodeEscArrow
+					@sendEvent('esckey')
+					event.stopPropagation()
+					event.preventDefault()
+				when @keycodeNext
+					@sendEvent('nextkey')
+					event.stopPropagation()
+					event.preventDefault()
+				when @keycodePrev
+					@sendEvent('prevkey')
+					event.preventDefault()
+					event.stopPropagation()
+				when @keycodeNullArrow1, @keycodeNullArrow2
+					# Stop propagation because these keys might be bound in a parent vue-nav and do unwanted things
+					event.stopPropagation()
+					event.preventDefault()
+
+		# Get the DOM element that should receive keyboard focus.
+		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.
+		getFocusElement: -> 
+			return @$el.querySelector(@focusElement) if @focusElement
+			return @$refs.smartLinkRef.$el || @$refs.smartLinkRef
 
 	watch:
-		# If focusRef changes after mount, update the ref in base-nav
-		focusRef: -> @sendEvent('navitem-mounted')
-
+		focusedItemIndex: ->
+			if @focusedItemIndex == @index
+				el = @getFocusElement()
+				el.focus()
+				# Fix bug where .focus-visible is not added when we hit escape key.
+				el.classList.add('focus-visible')
+				el.setAttribute('data-focus-visible-added', null)
+				# console.log 'focusedItemIndex', el, el.classList
 
 </script>
 

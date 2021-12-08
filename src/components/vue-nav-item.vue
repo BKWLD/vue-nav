@@ -171,9 +171,12 @@ export default
 	watch:
 		focusedItemIndex: ->
 			if @focusedItemIndex == @index
-				# console.log 'vue-nav-item', @id, @$el.innerText, 'focusing self'
-				@getFocusElement().focus()
-
+				el = @getFocusElement()
+				el.focus()
+				# Fix bug where .focus-visible is not added when we hit escape key.
+				el.classList.add('focus-visible')
+				el.setAttribute('data-focus-visible-added', null)
+				# console.log 'focusedItemIndex', el, el.classList
 
 </script>
 

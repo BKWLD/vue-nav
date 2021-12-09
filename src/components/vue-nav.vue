@@ -1,7 +1,8 @@
 <!--  -->
 
 <template lang='pug'>
-.vue-nav(
+component.vue-nav(
+	:is='element'
 	:class='classes'
 )
 	.overlay(
@@ -37,6 +38,7 @@ export default
 				'enableArrowKeys'
 				'focusedItemIndex'
 				'keyboardOrientation'
+				'subnavWrapperElements'
 			]
 		})
 	]
@@ -58,6 +60,13 @@ export default
 			type: Boolean
 			default: true
 		
+		# subnavOpen:
+		# 	type: Boolean
+		
+		element:
+			type: String
+			default: 'div'
+		
 	data: ->
 		# DOM element in each vue-nav-item that should receive focus
 		navFocusElements: []
@@ -74,6 +83,7 @@ export default
 	computed:
 		classes: -> [
 			@id # Your custom wrapper class name.  We need this for keyboard-events mixin.
+			if @subnavOpen then 'subnav-open'
 		]
 
 		subnavOpen: -> @activeSubnavIndex != -1
@@ -146,6 +156,8 @@ export default
 				when 'blur', 'subnav-blur'
 					# TODO: remove this if we can.
 					@onBlur(index)
+				when 'focus'
+					@setFocusToIndex(index)
 				when 'returnkey'
 					@onReturnKey(event, index)
 				when 'nextkey'
@@ -160,12 +172,14 @@ export default
 			# Do nothing if this event was emitted from a different nav.
 			return if id != @id
 
-			# Save ref
-			@subnavFocusElements[index] = subnavFocusElement
-			@subnavWrapperElements[index] = subnavWrapperElement
+			# Save ref in reactive way (Doing `@subnavFocusElements[index]` is not reactive)
+			@$set @subnavFocusElements, index, subnavFocusElement
+			@$set @subnavWrapperElements, index, subnavWrapperElement
 			
 			switch type
 				when 'blur'
+					@closeSubnav()
+				when 'close'
 					@closeSubnav()
 
 	watch:

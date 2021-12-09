@@ -5,15 +5,17 @@ component(
 	:is='element'
 	@keydown='onKeydown'
 	@click='onClick'
+	@focusin='onFocus'
 	@focusout='onBlur'
 )
-	smart-link.vue-nav-item(
-		:to='url'
+	component.vue-nav-item(
+		:is='url ? "smart-link" : "button"'
 		v-bind='smartLinkProps'
 		ref='smartLinkRef'
 	)
 		slot(
 			:active='index == activeSubnavIndex'
+			:has-subnav='hasSubnav'
 		)
 
 </template>
@@ -68,22 +70,30 @@ export default
 		focusedItemIndex: -> @baseNavInject.focusedItemIndex
 		enableArrowKeys: -> @baseNavInject.enableArrowKeys
 		keyboardOrientation: -> @baseNavInject.keyboardOrientation
+		subnavWrapperElements: -> @baseNavInject.subnavWrapperElements
 
 		# Other
 		isInternalUrl: -> if @url? then isInternal(@url) else false
+		hasSubnav: -> 
+			# if @id=='nav-mobile-2' then console.log 'hasSubnav', @subnavWrapperElements[@index]
+			if @subnavWrapperElements[@index] then true else false
 
 		# Props for the smart-link component
 		smartLinkProps: ->
 			class: @classes
 			role: 'menuitem'
+			to: @url
 			'data-vue-nav-item-index': @index
 			tabindex: @tabindex
 			'aria-haspopup': !!@url
 			'aria-expanded': @index == @activeSubnavIndex
+			# Disable this nav item if it has no url and no subnav.
+			disabled: if (!@url && !@hasSubnav) then true else false
 
 		classes: -> [
 			"#{@id}-item-link"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
+			if @hasSubnav then 'has-subnav' else ''
 		]
 
 		tabindex: ->
@@ -138,6 +148,11 @@ export default
 			@sendEvent('blur')
 			event.stopPropagation()
 
+		onFocus: (event) -> 
+			@setFocusToUs()
+			@sendEvent('focus')
+			event.stopPropagation()
+
 		# Key events
 		onKeydown: (event) ->
 			# console.log 'onKeydown', @id, event.keyCode, @keyboardOrientation
@@ -168,14 +183,19 @@ export default
 			return @$el.querySelector(@focusElement) if @focusElement
 			return @$refs.smartLinkRef.$el || @$refs.smartLinkRef
 
+		# Set focus to focusElement
+		setFocusToUs: ->
+			el = @getFocusElement()
+			el.focus()
+			# Fix bug where .focus-visible is not added when we hit escape key.
+			el.classList.add('focus-visible')
+			el.setAttribute('data-focus-visible-added', null)
+
 	watch:
 		focusedItemIndex: ->
 			if @focusedItemIndex == @index
-				el = @getFocusElement()
-				el.focus()
-				# Fix bug where .focus-visible is not added when we hit escape key.
-				el.classList.add('focus-visible')
-				el.setAttribute('data-focus-visible-added', null)
+				# console.log 'focusedItemIndex', @index
+				@setFocusToUs()
 				# console.log 'focusedItemIndex', el, el.classList
 
 </script>

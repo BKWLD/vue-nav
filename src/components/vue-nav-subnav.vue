@@ -14,6 +14,7 @@ transition(
 	)
 		slot(
 			:active='index == activeSubnavIndex'
+			:closeSubnav='closeSubnav'
 			v-show='index == activeSubnavIndex'
 		)
 
@@ -72,6 +73,8 @@ export default
 		onBlur: (event) ->
 			@sendEvent('blur')
 			event.stopPropagation()
+		
+		closeSubnav: (event) -> @sendEvent('close')
 
 		# Get the DOM element that should receive keyboard focus.
 		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.

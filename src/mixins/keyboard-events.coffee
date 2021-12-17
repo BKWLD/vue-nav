@@ -27,17 +27,18 @@ export default
 			return
 
 		onReturnKey: (event, index) ->
+			return if @activeSubnavIndex == index
 			# console.log @id, 'onReturnKey', index
 			# If no subnav, then assume it's a link.  Stop propagation but don't prevent default.
 			if !@subnavFocusElements[index]
 				# console.log 'onReturnKey 1'
 				return event.stopPropagation()
+			event.stopPropagation()
+			event.preventDefault()
 			# Else, open the subnav.
 			# console.log 'onReturnKey 2'
 			@setActiveSubnavIndex index
 			@setFocusToSubnav(index)
-			event.stopPropagation()
-			event.preventDefault()
 
 		##################################################################
 		## FOCUS MOVERS
@@ -57,6 +58,7 @@ export default
 			# console.log @id, 'setFocusToIndex', index, el.innerText, el
 			@focusedItemIndex = index
 
-		setFocusToSubnav: (index) -> @$nextTick =>
-			# console.log 'vue-nav setFocusToSubnav', index, @subnavFocusElements[index]
-			@subnavFocusElements[index]?.focus?()
+		setFocusToSubnav: (index) -> @$nextTick => @$nextTick =>
+			# console.log 'vue-nav', @id, 'setFocusToSubnav', index, @subnavFocusElements[index]
+			if @subnavFocusElements[index]?.focus?
+				@subnavFocusElements[index]?.focus()

@@ -149,17 +149,21 @@ export default
 			event.stopPropagation()
 
 		onFocus: (event) -> 
+			# console.log 'onFocus'
 			@setFocusToUs()
 			@sendEvent('focus')
 			event.stopPropagation()
 
 		# Key events
 		onKeydown: (event) ->
-			# console.log 'onKeydown', @id, event.keyCode, @keyboardOrientation
+			# console.log 'butt vue-nav-item', @id, 'onKeydown', event.keyCode
 			switch event.keyCode
 				when keycodes.SPACE, keycodes.RETURN, @keycodeReturnArrow
-					@sendEvent('returnkey')
+					event.stopPropagation()
 					# Don't prevent default, in case we hit return on a nav link.
+					if @hasSubnav then event.preventDefault()
+					# console.log @id, 'sending returnkey'
+					@sendEvent('returnkey')
 				when keycodes.ESC, @keycodeEscArrow
 					@sendEvent('esckey')
 					event.stopPropagation()
@@ -188,13 +192,13 @@ export default
 			el = @getFocusElement()
 			el.focus()
 			# Fix bug where .focus-visible is not added when we hit escape key.
-			el.classList.add('focus-visible')
-			el.setAttribute('data-focus-visible-added', null)
+			# el.classList.add('focus-visible')
+			# el.setAttribute('data-focus-visible-added', true)
 
 	watch:
 		focusedItemIndex: ->
 			if @focusedItemIndex == @index
-				# console.log 'focusedItemIndex', @index
+				# console.log 'vue-nav-item', @id, 'focusedItemIndex', @index
 				@setFocusToUs()
 				# console.log 'focusedItemIndex', el, el.classList
 

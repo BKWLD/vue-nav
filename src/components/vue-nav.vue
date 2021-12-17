@@ -5,11 +5,6 @@ component.vue-nav(
 	:is='element'
 	:class='classes'
 )
-	.overlay(
-		v-if='clickOutsideToClose'
-		v-show='subnavOpen'
-		@click='onOverlayClick'
-	)
 	slot
 
 </template>
@@ -60,10 +55,7 @@ export default
 		closeOnRouteChange:
 			type: Boolean
 			default: true
-		
-		# subnavOpen:
-		# 	type: Boolean
-		
+				
 		element:
 			type: String
 			default: 'div'
@@ -112,13 +104,26 @@ export default
 		# Listen for events
 		emitter.on 'vue-nav-item', @onNavItemEvent
 		emitter.on 'vue-nav-subnav', @onSubnavEvent
+		emitter.on 'vue-nav', @onNavEvent
+		document.addEventListener 'click', @onDocClick
 
 	beforeDestroy: ->
 		# Unsubscribe from child events
 		emitter.off 'vue-nav-item', @onNavItemEvent
 		emitter.off 'vue-nav-subnav', @onSubnavEvent
+		emitter.off 'vue-nav', @onNavEvent
+		document.removeEventListener 'click', @onDocClick
 
 	methods:
+
+		# When we click outside the nav and subnav, close the subnav.
+		onDocClick: (event) ->
+			# console.log 'onDocClick', event.target
+			return unless @subnavOpen
+			return unless @clickOutsideToClose
+			return if @$el.contains event.target
+			@closeSubnav()
+			@closeUs()
 
 		setActiveSubnavIndex: (index, fromKeyboardEvent=false, closeIfAlreadyActive=true) ->
 			# console.log 'vue-nav', @id, 'setActiveSubnavIndex', {index, fromKeyboardEvent}
@@ -137,7 +142,6 @@ export default
 				@focusedItemIndex = -1
 
 		closeSubnav: (fromKeyboardEvent=false) -> 
-			# console.log 'vue-nav', @id, 'closeSubnav', {fromKeyboardEvent}
 			@setActiveSubnavIndex -1, fromKeyboardEvent
 
 		closeUs: ->
@@ -145,13 +149,14 @@ export default
 			@focusedItemIndex = 0
 
 		onNavItemEvent: ({ type, id, index, focusElement }) ->
-			# console.log 'vue-nav', @id, 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
+			# if @id=='nav-desktop-2' then console.log @id, 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
+			# if @id=='nav-desktop-2' then console.log id, 'onNavItemEvent', type
 			
 			if id == @childId and type == 'esckey'
 				return @closeSubnav(true)
 			
 			# Do nothing if this event was emitted from a different nav.
-			return if id != @id
+			return unless id == @id
 
 			# Save ref
 			@navFocusElements[index] = focusElement
@@ -176,7 +181,7 @@ export default
 		onSubnavEvent: ({ type, id, index, subnavFocusElement, subnavWrapperElement }) ->
 			# console.log 'onSubnavEvent', { type, id, index, subnavFocusElement }
 			# Do nothing if this event was emitted from a different nav.
-			return if id != @id
+			return unless id == @id
 
 			# Save ref in reactive way (Doing `@subnavFocusElements[index]` is not reactive)
 			@$set @subnavFocusElements, index, subnavFocusElement
@@ -188,11 +193,17 @@ export default
 				when 'close'
 					@closeSubnav()
 
+		onNavEvent: ({ type, id }) ->
+			return unless id == @id
+			# console.log 'onNavEvent', {type, id}
+			if type=='closesubnav' then @closeSubnav()
+
 	watch:
 		# Trigger closeSubnav() on route change
 		$route: -> if @closeOnRouteChange then @closeSubnav()
 
-		# Emit events to parent via Vue events
+		activeSubnavIndex: ->
+			# Emit events to parent via Vue events
 			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
 			
 			# Handle body-scroll-lock
@@ -205,16 +216,19 @@ export default
 		subnavOpen: ->
 			@$emit 'update:subnavOpen', @subnavOpen
 
+			# On close, close the child nav's subnav.
+			if !@subnavOpen and @childId
+				emitter.emit 'vue-nav', {
+					id: @childId
+					type: 'closesubnav'
+				}
+
+
+
 </script>
 
 <!-- ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 <style lang='stylus' scoped>
-.overlay
-	position absolute
-	width 200vw
-	height 200vh
-	left -50vw
-	top -50vh
 
 </style>

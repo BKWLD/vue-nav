@@ -27,10 +27,3 @@ export default
 		onScroll: ->
 			return unless @closeOnScroll
 			if Math.abs(window?.scrollY - @scrollYOnOpen) > @closeOnScrollThreshold then @setActiveSubnavIndex -1
-
-		onOverlayClick: (event) ->
-			# console.log 'onOverlayClick', @navId
-			return unless @clickOutsideToClose
-			event.stopPropagation()
-			@closeSubnav()
-			@closeUs()

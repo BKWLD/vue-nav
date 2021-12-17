@@ -21,6 +21,7 @@ import emitter from 'tiny-emitter/instance'
 import { ReactiveProvideMixin } from 'vue-reactive-provide'
 import PointerEvents from '../mixins/pointer-events.coffee'
 import KeyboardEvents from '../mixins/keyboard-events.coffee'
+import { disableBodyScroll, clearAllBodyScrollLocks } from 'body-scroll-lock'
 
 export default
 	name: 'VueNav'
@@ -67,6 +68,11 @@ export default
 			type: String
 			default: 'div'
 		
+		# When subnav is open, engage body-scroll-lock
+		lockScroll:
+			type: Boolean
+			default: false
+
 	data: ->
 		# DOM element in each vue-nav-item that should receive focus
 		navFocusElements: []
@@ -187,9 +193,13 @@ export default
 		$route: -> if @closeOnRouteChange then @closeSubnav()
 
 		# Emit events to parent via Vue events
-		activeSubnavIndex: ->
 			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
-			return if @activeSubnavIndex==-1
+			
+			# Handle body-scroll-lock
+			if @lockScroll
+				if @subnavOpen then disableBodyScroll @$el
+				else clearAllBodyScrollLocks()
+
 			# @setFocusToSubnav(@activeSubnavIndex)
 
 		subnavOpen: ->

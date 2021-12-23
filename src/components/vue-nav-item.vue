@@ -9,7 +9,7 @@ component(
 	@focusout='onBlur'
 )
 	component.vue-nav-item(
-		:is='url ? "smart-link" : "button"'
+		:is='innerElement'
 		v-bind='smartLinkProps'
 		ref='smartLinkRef'
 	)
@@ -68,6 +68,14 @@ export default
 			type: String
 			default: 'div'
 
+		# Tells the component that the slot contains a button element.
+		# When true, .vue-nav-item won't wrap the slot in a button.  
+		# This prevents having a button wrapped inside a button, which is 
+		# invalid HTML.
+		buttonInside:
+			type: Boolean
+			default: false
+
 	computed:
 		# Injected from vue-nav
 		id: -> @vueNavInject.id
@@ -94,6 +102,11 @@ export default
 			'aria-expanded': @index == @activeSubnavIndex
 			# Disable this nav item if it has no url and no subnav.
 			# disabled: if (!@url && !@hasSubnav) then true else false
+		
+		innerElement: ->
+			if @url then return 'smart-link'
+			if @buttonInside then return 'div'
+			return 'button'
 
 		classes: -> [
 			if @index == @activeSubnavIndex then 'active' else 'not-active'

@@ -23,12 +23,12 @@ export default
 		##################################################################
 		## EVENT HANDLERS
 
-		onBlur: (index) -> @$defer =>
-			return
+		# onBlur: (index) -> @$defer =>
+		# 	return
 
 		onReturnKey: (event, index) ->
 			return if @activeSubnavIndex == index
-			# console.log @id, 'onReturnKey', index
+			# console.log 'onReturnKey', {id: @id, index}
 			# If no subnav, then assume it's a link.  Stop propagation but don't prevent default.
 			if !@subnavFocusElements[index]
 				# console.log 'onReturnKey 1'

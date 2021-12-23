@@ -33,10 +33,12 @@ export default
 		index:
 			type: Number
 
-		# By default, the smart-link receives keyboard focus.  If you want an element inside the slot
-		# to receive keyboard focus, then pass in a querySelector string.
+		# By default the first .vue-nav-item in this subnav receives keyboard focus
+		# when the subnav opens.  If you want a different element to receive focus,
+		# pass in a querySelector string.
 		focusElement:
 			type: String
+			default: '.vue-nav-item'
 
 		# Hardcode subnav transition duration, if necessary.
 		transitionDuration:

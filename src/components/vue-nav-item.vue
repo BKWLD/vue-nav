@@ -66,6 +66,7 @@ export default
 	computed:
 		# Injected from vue-nav
 		id: -> @baseNavInject.id
+		parentId: -> @baseNavInject.parentId
 		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
 		focusedItemIndex: -> @baseNavInject.focusedItemIndex
 		enableArrowKeys: -> @baseNavInject.enableArrowKeys
@@ -129,13 +130,22 @@ export default
 
 	methods:
 		
+		# Send an event to the vue-nav
 		sendEvent: (type) ->
-			# console.log 'vue-nav-item', @id, 'sendEvent', type
+			# console.log 'sendEvent', @id, type
 			emitter.emit 'vue-nav-item', {
 				type
 				id: @id
 				index: @index
 				focusElement: @getFocusElement()
+			}
+		
+		# Send an event to the parent vue-nav.
+		sendParentEvent: (type) ->
+			# console.log 'sendParentEvent', @parentId, type
+			emitter.emit 'child-vue-nav-item', {
+				type
+				id: @parentId
 			}
 
 		# Pointer events
@@ -156,26 +166,27 @@ export default
 
 		# Key events
 		onKeydown: (event) ->
-			# console.log 'butt vue-nav-item', @id, 'onKeydown', event.keyCode
+			# console.log 'onKeydown', @$el.innerText
 			switch event.keyCode
 				when keycodes.SPACE, keycodes.RETURN, @keycodeReturnArrow
 					event.stopPropagation()
 					# Don't prevent default, in case we hit return on a nav link.
 					if @hasSubnav then event.preventDefault()
-					# console.log @id, 'sending returnkey'
 					@sendEvent('returnkey')
 				when keycodes.ESC, @keycodeEscArrow
-					@sendEvent('esckey')
+					# Escape key is special becuase it emits using the parent vue-nav's ID.
+					# Because we need to tell the parent vue-nav instance to close its subnav.
+					@sendParentEvent('esckey')
 					event.stopPropagation()
 					event.preventDefault()
 				when @keycodeNext
+					event.stopPropagation()
+					event.preventDefault()
 					@sendEvent('nextkey')
-					event.stopPropagation()
-					event.preventDefault()
 				when @keycodePrev
-					@sendEvent('prevkey')
 					event.preventDefault()
 					event.stopPropagation()
+					@sendEvent('prevkey')
 				when @keycodeNullArrow1, @keycodeNullArrow2
 					# Stop propagation because these keys might be bound in a parent vue-nav and do unwanted things
 					event.stopPropagation()

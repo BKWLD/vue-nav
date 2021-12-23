@@ -195,7 +195,7 @@ export default
 			# Do nothing if this event was emitted from a different nav.
 			return unless id == @id
 
-			# if id=='nav-mobile-1' then console.log 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
+			# console.log 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
 			
 			# Save ref
 			if index? && focusElement? then @navFocusElements[index] = focusElement

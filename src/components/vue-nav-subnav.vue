@@ -78,9 +78,13 @@ export default
 		closeSubnav: (event) -> @sendEvent('close')
 
 		# Get the DOM element that should receive keyboard focus.
-		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.
+		# This is a method instead of a computed prop so it's called 
+		# just in time and returns accurate elements.
 		getSubnavFocusElement: -> 
-			return @$el.querySelector(@focusElement) if @focusElement
+			# Return focus element.  Fallback to the whole darn component.
+			# We must return some element, or clicking the nav item won't
+			# open the subnav at all.
+			return @$el.querySelector(@focusElement) || @$el
 
 	watch:		
 		# When this subnav becomes active, set focus to the desired element.

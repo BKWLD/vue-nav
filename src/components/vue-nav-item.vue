@@ -24,7 +24,6 @@ component(
 
 <script lang='coffee'>
 import emitter from 'tiny-emitter/instance'
-import { isInternal } from 'vue-routing-anchor-parser'
 HTMLElement = window?.HTMLElement || Object # Define HTMLElement for SSG
 
 keycodes = Object.freeze
@@ -42,42 +41,47 @@ keycodes = Object.freeze
 	'DOWN': 40
 
 export default
-	inject: ['baseNavInject']
+	# Inject the variables provided by the vue-nav.
+	inject: ['vueNavInject']
 
 	props:
-		# Determines tabbing order, and connects nav-items with corresponding subnavs.
+		# Each vue-nav-item must have a unique index.  This determines the
+		# keyboard navigation order, and connects each item to its subnav.
 		index:
 			type: Number
 
-		# Clicking this nav-item takes you to this URL.  If we have a URL, there's no subnav.
+		# If provided, clicking this item takes you to this URL.  
+		# If provided, there's no subnav.
 		url:
 			type: String
 
-		# By default, the smart-link receives keyboard focus.  If you want an element inside the slot
-		# to receive keyboard focus, then pass in a querySelector string.
+		# By default, the '.vue-nav-item' element receives keyboard focus.
+		# If you want a different element to receive keyboard focus,
+		# (for example, a button that you nested inside it), 
+		# then pass in a querySelector string (for example, '.btn')
 		focusElement:
 			type: String
 
-		# What element to wrap this component in.
+		# Determines this component's root element.  For example, if you're
+		# doing a menu you may want to use 'li'.
 		element:
 			type: String
 			default: 'div'
 
 	computed:
 		# Injected from vue-nav
-		id: -> @baseNavInject.id
-		parentId: -> @baseNavInject.parentId
-		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
-		focusedItemIndex: -> @baseNavInject.focusedItemIndex
-		enableArrowKeys: -> @baseNavInject.enableArrowKeys
-		keyboardOrientation: -> @baseNavInject.keyboardOrientation
-		subnavWrapperElements: -> @baseNavInject.subnavWrapperElements
+		id: -> @vueNavInject.id
+		parentId: -> @vueNavInject.parentId
+		activeSubnavIndex: -> @vueNavInject.activeSubnavIndex
+		focusedItemIndex: -> @vueNavInject.focusedItemIndex
+		enableArrowKeys: -> @vueNavInject.enableArrowKeys
+		keyboardOrientation: -> @vueNavInject.keyboardOrientation
+		subnavFocusElements: -> @vueNavInject.subnavFocusElements
 
 		# Other
-		isInternalUrl: -> if @url? then isInternal(@url) else false
 		hasSubnav: -> 
-			# if @id=='nav-mobile-2' then console.log 'hasSubnav', @subnavWrapperElements[@index]
-			if @subnavWrapperElements[@index] then true else false
+			# if @id=='nav-mobile-2' then console.log 'hasSubnav', @subnavFocusElements[@index]
+			if @subnavFocusElements?[@index] then true else false
 
 		# Props for the smart-link component
 		smartLinkProps: ->
@@ -89,10 +93,9 @@ export default
 			'aria-haspopup': !!@url
 			'aria-expanded': @index == @activeSubnavIndex
 			# Disable this nav item if it has no url and no subnav.
-			disabled: if (!@url && !@hasSubnav) then true else false
+			# disabled: if (!@url && !@hasSubnav) then true else false
 
 		classes: -> [
-			"#{@id}-item-link"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 			if @hasSubnav then 'has-subnav' else ''
 		]
@@ -160,8 +163,6 @@ export default
 
 		onFocus: (event) -> 
 			# console.log 'onFocus'
-			@setFocusToUs()
-			@sendEvent('focus')
 			event.stopPropagation()
 
 		# Key events
@@ -202,6 +203,7 @@ export default
 		setFocusToUs: ->
 			el = @getFocusElement()
 			el.focus()
+			# console.log 'setFocusToUs', el.innerText, el
 			# Fix bug where .focus-visible is not added when we hit escape key.
 			# el.classList.add('focus-visible')
 			# el.setAttribute('data-focus-visible-added', true)
@@ -211,7 +213,6 @@ export default
 			if @focusedItemIndex == @index
 				# console.log 'vue-nav-item', @id, 'focusedItemIndex', @index
 				@setFocusToUs()
-				# console.log 'focusedItemIndex', el, el.classList
 
 </script>
 

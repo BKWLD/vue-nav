@@ -8,8 +8,8 @@ transition(
 	:duration='transitionDuration'
 )
 	div.vue-nav-subnav(
+		:class='classes'
 		v-show='index == activeSubnavIndex'
-		ref='subnavWrapperRef'
 		@focusout='onBlur'
 	)
 		slot(
@@ -27,15 +27,17 @@ transition(
 import emitter from 'tiny-emitter/instance'
 
 export default
-	inject: ['baseNavInject']
+	inject: ['vueNavInject']
 
 	props:
+		# The index of this subnav must match the index of the 
+		# vue-nav-item that opens it.
 		index:
 			type: Number
 
-		# By default the first .vue-nav-item in this subnav receives keyboard focus
-		# when the subnav opens.  If you want a different element to receive focus,
-		# pass in a querySelector string.
+		# When this subnav opens, by default the first .vue-nav-item
+		# receives keyboard focus. If you want a different element to 
+		# receive focus, pass in a querySelector string.
 		focusElement:
 			type: String
 			default: '.vue-nav-item'
@@ -47,13 +49,11 @@ export default
 
 	computed:
 		# Injected from vue-nav
-		id: -> @baseNavInject.id
-		enterActiveClass: -> @baseNavInject.enterActiveClass
-		leaveActiveClass: -> @baseNavInject.leaveActiveClass
-		activeSubnavIndex: -> @baseNavInject.activeSubnavIndex
+		id: -> @vueNavInject.id
+		enterActiveClass: -> @vueNavInject.enterActiveClass
+		leaveActiveClass: -> @vueNavInject.leaveActiveClass
+		activeSubnavIndex: -> @vueNavInject.activeSubnavIndex
 		classes: -> [
-			'vue-nav-subnav' # Consistent wrapper class name.  Used by `keyboard-events` mixin.
-			"#{@id}-subnav"
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
 
@@ -69,7 +69,6 @@ export default
 				id: @id
 				index: @index
 				subnavFocusElement: @getSubnavFocusElement()
-				subnavWrapperElement: @getSubnavWrapperElement()
 			}
 
 		onBlur: (event) ->
@@ -82,13 +81,19 @@ export default
 		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.
 		getSubnavFocusElement: -> 
 			return @$el.querySelector(@focusElement) if @focusElement
-			return @getSubnavWrapperElement()
 
-		getSubnavWrapperElement: -> return @$refs.subnavWrapperRef.$el || @$refs.subnavWrapperRef
-
-	watch:
-		# If focusElement changes after mount, communicate this change to vue-nav.
-		focusElement: -> @sendEvent('focusElement changed')
+	watch:		
+		# When this subnav becomes active, set focus to the desired element.
+		# Setting this too fast (ie @$nextTick=>) causes problems with
+		# the vue transition, including flashing, wrong transform rendering, 
+		# and not setting focus.  Waiting 100ms works better.
+		# TODO: Check if this is bad.
+		activeSubnavIndex: ->
+			if @index == @activeSubnavIndex
+				@$wait 100, () =>
+					el = @getSubnavFocusElement()
+					el.focus()
+					# console.log 'watch activeSubnavIndex, set focus', el
 
 </script>
 

@@ -15,9 +15,6 @@ export default
 			type: Boolean
 			default: true
 
-	data: ->
-		focusedItemIndex: 0
-
 	methods:
 
 		##################################################################
@@ -38,7 +35,6 @@ export default
 			# Else, open the subnav.
 			# console.log 'onReturnKey 2'
 			@setActiveSubnavIndex index
-			@setFocusToSubnav(index)
 
 		##################################################################
 		## FOCUS MOVERS
@@ -54,11 +50,7 @@ export default
 			index = (index + @navFocusElements.length) % @navFocusElements.length
 			@setFocusToIndex index
 
-		setFocusToIndex: (index) ->
-			# console.log @id, 'setFocusToIndex', index, el.innerText, el
+		setFocusToIndex: (index, fromKeyboardEvent=false) ->
+			return if @focusedItemIndex == index
+			# console.log 'setFocusToIndex', {id: @id, index}
 			@focusedItemIndex = index
-
-		setFocusToSubnav: (index) -> @$nextTick => @$nextTick =>
-			# console.log 'vue-nav', @id, 'setFocusToSubnav', index, @subnavFocusElements[index]
-			if @subnavFocusElements[index]?.focus?
-				@subnavFocusElements[index]?.focus()

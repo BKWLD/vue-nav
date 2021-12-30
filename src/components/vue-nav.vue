@@ -5,7 +5,10 @@ component.vue-nav(
 	:is='element'
 	:class='classes'
 )
-	slot
+	slot(
+		:subnav-open='subnavOpen'
+		:active-subnav-index='activeSubnavIndex'
+	)
 
 </template>
 

@@ -71,8 +71,15 @@ export default
 				subnavFocusElement: @getSubnavFocusElement()
 			}
 
+		# Send a blur event when we tab away from this subnav.  This lets us
+		# close the subnav and continue tabbing through the page.
 		onBlur: (event) ->
-			@sendEvent('blur')
+			# Wait 100ms to ensure our blur event arrives after any click events.
+			# This prevents a bug where clicking on this subnav's vue-nav-item
+			# causes this subnav to close and re-open quickly, because this blur event
+			# arrives first (closes the subnav), then the click event arrives (opens the subnav).
+			# NextTick and Defer still arrive before click events.
+			@$wait 100, => @sendEvent('blur')
 			event.stopPropagation()
 		
 		closeSubnav: (event) -> @sendEvent('close')

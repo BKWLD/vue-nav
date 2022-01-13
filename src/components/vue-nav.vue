@@ -1,6 +1,7 @@
 <!--  -->
 
 <template lang='pug'>
+
 component.vue-nav(
 	:is='element'
 	:class='classes'
@@ -19,14 +20,14 @@ import emitter from 'tiny-emitter/instance'
 import { ReactiveProvideMixin } from 'vue-reactive-provide'
 import PointerEvents from '../mixins/pointer-events.coffee'
 import KeyboardEvents from '../mixins/keyboard-events.coffee'
-import { disableBodyScroll, clearAllBodyScrollLocks } from 'body-scroll-lock'
+import { disableBodyScroll, enableBodyScroll, clearAllBodyScrollLocks } from 'body-scroll-lock'
 
 export default
 	name: 'VueNav'
 
-	# If this vue-nav is nested inside another vue-nav, then inject the
-	# variables provided by the parent vue-nav because we need the parentId.
 	inject: 
+		# If this vue-nav is nested inside another vue-nav, then inject the
+		# variables provided by the parent vue-nav because we need the parentId.
 		vueNavInject:
 			default: {}
 
@@ -52,46 +53,71 @@ export default
 				'focusedItemIndex'
 				'keyboardOrientation'
 				'subnavFocusElements'
+				'lockScroll'
 			]
 		})
 	]
 
+
 	props:
+
 		# If true, the subnav closes when the route changes.
 		closeOnRouteChange:
 			type: Boolean
 			default: true
 				
+		# Determines the component's root HTML element
 		element:
 			type: String
 			default: 'div'
 		
-		# When subnav is open, engage body-scroll-lock
+		# When subnav is open, enable body-scroll-lock
 		lockScroll:
 			type: Boolean
 			default: false
+		
+		# When we lock scroll, what target element to persist scrolling for.
+		# QuerySelector string.  If null, defaults to this vue-nav's @$el.
+		scrollElement:
+			type: String
+
 
 	data: ->
+
 		# Unique ID.  Randomly generated.
 		id: ''
+
 		# DOM element in each vue-nav-item that should receive focus.
 		navFocusElements: []
+
 		# DOM element in each vue-nav-subnav that should receive focus.
 		subnavFocusElements: []
+
+		# DOM element in each vue-nav-subnav that should persist scrolling
+		# during body scroll lock.
+		subnavScrollElements: []
+
 		# Zero-based index of the vue-nav-subnav that is currently open/expanded.
 		activeSubnavIndex: -1
+
 		# Zero-based index of the vue-nav-subnav that was open before the current one.
 		# Used only by @enterActiveClass, an animation helper.
 		prevActiveSubnavIndex: -1
+
 		# Index of the focused vue-nav-item.
 		focusedItemIndex: 0
+
 		# Index of the previously focused vue-nav-item.  So we can restore focus after
 		# the subnav has been opened and then closed.
 		prevfocusedItemIndex: -1
 
+
 	computed:
+
 		# Injected from parent vue-nav, if one exists
 		parentId: -> @vueNavInject?.id || ''
+		
+		parentLockScroll: -> @vueNavInject?.lockScroll || false
 
 		classes: -> [
 			if @subnavOpen then 'subnav-open'
@@ -133,6 +159,7 @@ export default
 		emitter.off 'vue-nav', @onNavEvent
 		document.removeEventListener 'click', @onDocClick
 
+
 	methods:
 
 		# Generate a unique string comprised of numbers and lowercase letters.
@@ -144,17 +171,19 @@ export default
 			return unless @subnavOpen
 			return unless @clickOutsideToClose
 			return if @$el.contains event.target
+			# console.log 'onDocClick: closeSubnav'
 			@closeSubnav()
 			@closeUs()
 
 		setActiveSubnavIndex: (index, fromKeyboardEvent=false, closeIfAlreadyActive=true) ->
+			
 			# Stop if there's no subnav at this index.
 			return if index != -1 && !@subnavFocusElements?[index]
 
 			# Stop if we're trying to close it when it's already closed.
 			return if index == -1 && @activeSubnavIndex == -1
 
-			# console.log 'setActiveSubnavIndex', {id: @id, index, fromKeyboardEvent}
+			# console.log 'setActiveSubnavIndex', {id: @id, index, activeSubnavIndex: @activeSubnavIndex}
 			@prevActiveSubnavIndex = @activeSubnavIndex
 
 			# If index is -1 then close subnav.  
@@ -168,7 +197,7 @@ export default
 			
 			# If we toggled the already active subnav, close subnav.
 			if (closeIfAlreadyActive and index == @activeSubnavIndex )
-				# console.log "setActiveSubnavIndex #{@id}: closing the active subnav."
+				# console.log "setActiveSubnavIndex: closing the active subnav."
 				# Close the subnav
 				@activeSubnavIndex = -1
 				# Restore focus to the item that was focused before we opened the subnav.
@@ -176,7 +205,7 @@ export default
 				return
 
 			# Open the new subnav
-			# console.log "setActiveSubnavIndex #{@id}: opening subnav', index"
+			# console.log "setActiveSubnavIndex #{@id}: opening subnav #{index}"
 			@activeSubnavIndex = index
 
 			# We opened a subnav, and will set focus to it.  Now let's remove focus 
@@ -184,45 +213,48 @@ export default
 			@prevfocusedItemIndex = @focusedItemIndex
 			@focusedItemIndex = -1
 
-		# Todo: If always true, we could remove this param.
-		closeSubnav: (fromKeyboardEvent=true) -> 
-			# console.log 'closeSubnav', @id
+		# Todo: If fromKeyboardEvent always true, we could remove this param.
+		closeSubnav: (fromKeyboardEvent=true) ->
+			# console.log 'closeSubnav', {id: @id}
 			@setActiveSubnavIndex -1, fromKeyboardEvent
 
 		closeUs: ->
 			# When we think we'll be closed, set the focus index back to the start.
 			@focusedItemIndex = 0
 
-		# Handle events from a vue-nav-item
 		onNavItemEvent: ({ type, id, index, focusElement }) ->
+			# Handle events from a vue-nav-item
 			# Do nothing if this event was emitted from a different nav.
 			return unless id == @id
-
-			# console.log 'onNavItemEvent', { type, id, index, focusElement, text: focusElement.innerText }
+			# console.log 'onNavItemEvent', { type, id, index, activeSubnavIndex: @activeSubnavIndex }
 			
 			# Save ref
 			if index? && focusElement? then @navFocusElements[index] = focusElement
 			
 			switch type
+				
 				when 'click'
+					# console.log 'onNavItemEvent', { type, id, index, activeSubnavIndex: @activeSubnavIndex }
 					@setActiveSubnavIndex(index)
-				# Todo: If blur always does nothing, then remove it.
-				# Blur does nothing
-				# when 'blur', 'subnav-blur'
-					# @onBlur(index)
+
 				when 'focus'
 					@setFocusToIndex(index)
+
 				when 'returnkey'
 					@onReturnKey(event, index)
+
 				when 'nextkey'
 					@setFocustoNextItem(index)
+
 				when 'prevkey'
 					@setFocustoPrevItem(index)
+
 				when 'destroyed'
 					@navFocusElements.pop(index)
 
 		# Handle events from a vue-nav-item in a child vue-nav
 		onChildNavItemEvent: ({ type, id }) ->
+			
 			# Do nothing if this event was emitted from the wrong nav.
 			return unless id == @id
 
@@ -231,57 +263,98 @@ export default
 			# console.log 'onChildNavItemEvent', { type }
 
 		# Handle events from a vue-nav-subnav
-		onSubnavEvent: ({ type, id, index, subnavFocusElement }) ->
+		onSubnavEvent: ({ type, id, index, focusElement, scrollElement }) ->
+
 			# Do nothing if this event was emitted from a different nav.
 			return unless id == @id
-			# console.log 'onSubnavEvent', {type}
+			# console.log 'onSubnavEvent', { type, id, index, focusElement, scrollElement }
 
 			# Save ref in reactive way (Doing `@subnavFocusElements[index]` is not reactive)
-			@$set @subnavFocusElements, index, subnavFocusElement
+			@$set @subnavFocusElements, index, focusElement
+			@$set @subnavScrollElements, index, scrollElement
 			
 			switch type
 				when 'blur'
+					# If a new subnav is already open, this means 'blur' was triggered by opening
+					# a new subnav.  Don't close the subnav.
+					return if @activeSubnavIndex != index
+					# console.log 'onSubnavEvent', { type, id, index, activeSubnavIndex: @activeSubnavIndex }
+
 					@closeSubnav()
+
 				when 'close'
+					# console.log 'onSubnavEvent close'
 					@closeSubnav()
 
 		# Handle events from another vue-nav, such as our parent.
 		onNavEvent: ({ id, type }) ->
-			# Listen for 'closesubnav' events emitted by our parent vue-nav.  
-			# This is a special event emitted by our parent vue-nav instance 
-			# when it commands all its children to close their subnavs.
+
 			if id == @parentId and type=='closesubnav'
-				# console.log 'onNavEvent', {type, id: @id}
+				# Listen for 'closesubnav' events emitted by our parent vue-nav.  
+				# This is a special event emitted by our parent vue-nav instance 
+				# when it commands all its children to close their subnavs.
+				# console.log 'onNavEvent', {type, id: @id}, 'closeSubnav'
 				@closeSubnav()
 
 	watch:
-		# Trigger closeSubnav() on route change
+		
 		$route: -> 
+			# Close subnav on route change
 			if @closeOnRouteChange
 				@closeSubnav()
 				# console.log 'closing subnav on route change'
 
 		activeSubnavIndex: ->
-			# Emit events to parent via Vue events
+			# Emit events to parent component
 			@$emit 'update:activeSubnavIndex', @activeSubnavIndex
 			
-			# Handle body-scroll-lock
+			# Handle body scroll lock
 			if @lockScroll
-				if @subnavOpen then disableBodyScroll @$el
-				else clearAllBodyScrollLocks()
+				
+				# Get target elements
+				targetElement = @subnavScrollElements[@activeSubnavIndex]
+				prevTargetElement = @subnavScrollElements[@prevActiveSubnavIndex]
+
+				if @subnavOpen
+					# If subnav is open, lock scroll
+					
+					# Remove lock from the previous subnav
+					if prevTargetElement
+						enableBodyScroll prevTargetElement
+						# console.log 'body scroll unlock', prevTargetElement
+
+					# Enable lock on this subnav
+					if targetElement
+						disableBodyScroll targetElement
+						# console.log 'body scroll lock', targetElement
+
+				else
+					# Subnav is closed
+
+					# Remove lock from the subnav that was open
+					if targetElement
+						enableBodyScroll targetElement
+						# console.log 'body scroll unlock', targetElement
+
+					# Remove all scroll locks, unless we have a parent vue-nav
+					# that also has a scroll lock.
+					if !@parentLockScroll
+						clearAllBodyScrollLocks()
+						# console.log 'body scroll clear all'
+
 
 		subnavOpen: ->
+			# Emit events to parent component
 			@$emit 'update:subnavOpen', @subnavOpen
 
+			# When we close our subnav, tell all direct child vue-navs
+			# to close their subnavs, too.
+			# This is handled by the 'onNavEvent' method of all the 
+			# child vue-navs.
 			if !@subnavOpen
-				# When we close our subnav, tell all direct child vue-navs
-				# to close their subnavs, too.
-				# This is handled by the 'onNavEvent' method of all the 
-				# child vue-navs.
-				emitter.emit 'vue-nav', {
+				emitter.emit 'vue-nav',
 					id: @id
 					type: 'closesubnav'
-				}
 
 </script>
 

@@ -47,6 +47,12 @@ export default
 			type: Number
 			default: 800
 
+		# When we lock scroll, what target element to persist scrolling for.
+		# QuerySelector string.  If null, defaults to this vue-nav's @$el.
+		scrollElement:
+			type: String
+
+
 	computed:
 		# Injected from vue-nav
 		id: -> @vueNavInject.id
@@ -63,22 +69,29 @@ export default
 
 	methods:
 		sendEvent: (type) ->
-			# console.log 'subnav sendEvent', type
 			emitter.emit 'vue-nav-subnav', {
 				type
 				id: @id
 				index: @index
-				subnavFocusElement: @getSubnavFocusElement()
+				focusElement: @getFocusElement()
+				scrollElement: @getScrollElement()
 			}
 
 		# Send a blur event when we tab away from this subnav.  This lets us
 		# close the subnav and continue tabbing through the page.
-		onBlur: (event) ->
+		# Defer, or else 'document.activeElement' is always the body
+		onBlur: (event) -> @$defer =>
+			
+			# Do nothing if focus changed between elements within this subnav.
+			return if @$el.contains document.activeElement
+			# console.log 'subnav onBlur', @$el.contains(document.activeElement), event.target, document.activeElement
+			
 			# Wait 100ms to ensure our blur event arrives after any click events.
 			# This prevents a bug where clicking on this subnav's vue-nav-item
 			# causes this subnav to close and re-open quickly, because this blur event
 			# arrives first (closes the subnav), then the click event arrives (opens the subnav).
 			# NextTick and Defer still arrive before click events.
+			
 			@$wait 100, => @sendEvent('blur')
 			event.stopPropagation()
 		
@@ -87,11 +100,16 @@ export default
 		# Get the DOM element that should receive keyboard focus.
 		# This is a method instead of a computed prop so it's called 
 		# just in time and returns accurate elements.
-		getSubnavFocusElement: -> 
+		getFocusElement: -> 
 			# Return focus element.  Fallback to the whole darn component.
 			# We must return some element, or clicking the nav item won't
 			# open the subnav at all.
 			return @$el.querySelector(@focusElement) || @$el
+		
+		getScrollElement: -> 
+			if typeof @scrollElement == 'string'
+				return @$el.querySelector(@scrollElement) || @$el
+			return @$el
 
 	watch:		
 		# When this subnav becomes active, set focus to the desired element.
@@ -102,7 +120,7 @@ export default
 		activeSubnavIndex: ->
 			if @index == @activeSubnavIndex
 				@$wait 100, () =>
-					el = @getSubnavFocusElement()
+					el = @getFocusElement()
 					el.focus()
 					# console.log 'watch activeSubnavIndex, set focus', el
 

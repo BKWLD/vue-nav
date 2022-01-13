@@ -1,6 +1,8 @@
 <!-- One navigation item in a base nav -->
 
 <template lang='pug'>
+
+//- Outer element ('element' prop)
 component(
 	:is='element'
 	@keydown='onKeydown'
@@ -8,11 +10,15 @@ component(
 	@focusin='onFocus'
 	@focusout='onBlur'
 )
+
+	//- Inner element (smart-link, div, or button)
 	component.vue-nav-item(
 		:is='innerElement'
 		v-bind='smartLinkProps'
 		ref='smartLinkRef'
 	)
+
+		//- Slot
 		slot(
 			:active='index == activeSubnavIndex'
 			:has-subnav='hasSubnav'
@@ -24,7 +30,9 @@ component(
 
 <script lang='coffee'>
 import emitter from 'tiny-emitter/instance'
-HTMLElement = window?.HTMLElement || Object # Define HTMLElement for SSG
+
+# Define HTMLElement for SSG
+HTMLElement = window?.HTMLElement || Object 
 
 keycodes = Object.freeze
 	'TAB': 9
@@ -41,10 +49,13 @@ keycodes = Object.freeze
 	'DOWN': 40
 
 export default
+
 	# Inject the variables provided by the vue-nav.
 	inject: ['vueNavInject']
 
+
 	props:
+
 		# Each vue-nav-item must have a unique index.  This determines the
 		# keyboard navigation order, and connects each item to its subnav.
 		index:
@@ -76,7 +87,9 @@ export default
 			type: Boolean
 			default: false
 
+
 	computed:
+
 		# Injected from vue-nav
 		id: -> @vueNavInject.id
 		parentId: -> @vueNavInject.parentId
@@ -86,7 +99,6 @@ export default
 		keyboardOrientation: -> @vueNavInject.keyboardOrientation
 		subnavFocusElements: -> @vueNavInject.subnavFocusElements
 
-		# Other
 		hasSubnav: -> 
 			# if @id=='nav-mobile-2' then console.log 'hasSubnav', @subnavFocusElements[@index]
 			if @subnavFocusElements?[@index] then true else false
@@ -117,9 +129,7 @@ export default
 			if !@enableArrowKeys then return 0
 			if (@index == @focusedItemIndex) then return 0 else return -1
 
-		##################################################################
-		## Keyboard Events
-		
+		# Keyboard Events
 		# Get the next/prev arrow keycodes depending on keyboardOrientation.
 		keycodeNext: ->
 			return null unless @enableArrowKeys

@@ -30,6 +30,7 @@ export default
 	inject: ['vueNavInject']
 
 	props:
+
 		# The index of this subnav must match the index of the 
 		# vue-nav-item that opens it.
 		index:
@@ -63,9 +64,11 @@ export default
 			if @index == @activeSubnavIndex then 'active' else 'not-active'
 		]
 
+
 	# On mounted, send an event so vue-nav has each subnav's index and ref
 	mounted: -> @$nextTick ->
 		@sendEvent('mounted')
+
 
 	methods:
 		sendEvent: (type) ->
@@ -110,6 +113,7 @@ export default
 			if typeof @scrollElement == 'string'
 				return @$el.querySelector(@scrollElement) || @$el
 			return @$el
+
 
 	watch:		
 		# When this subnav becomes active, set focus to the desired element.

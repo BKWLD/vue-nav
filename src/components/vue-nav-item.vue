@@ -181,26 +181,33 @@ export default
 		# Key events
 		onKeydown: (event) ->
 			# console.log 'onKeydown', @$el.innerText
+
 			switch event.keyCode
+
 				when keycodes.SPACE, keycodes.RETURN, @keycodeReturnArrow
 					event.stopPropagation()
 					# Don't prevent default, in case we hit return on a nav link.
 					if @hasSubnav then event.preventDefault()
 					@sendEvent('returnkey')
+
 				when keycodes.ESC, @keycodeEscArrow
+					# console.log 'onKeyDown esc'
 					# Escape key is special becuase it emits using the parent vue-nav's ID.
 					# Because we need to tell the parent vue-nav instance to close its subnav.
 					@sendParentEvent('esckey')
 					event.stopPropagation()
 					event.preventDefault()
+
 				when @keycodeNext
 					event.stopPropagation()
 					event.preventDefault()
 					@sendEvent('nextkey')
+
 				when @keycodePrev
 					event.preventDefault()
 					event.stopPropagation()
 					@sendEvent('prevkey')
+
 				when @keycodeNullArrow1, @keycodeNullArrow2
 					# Stop propagation because these keys might be bound in a parent vue-nav and do unwanted things
 					event.stopPropagation()
@@ -209,11 +216,13 @@ export default
 		# Get the DOM element that should receive keyboard focus.
 		# This is a method instead of a computed prop so it's called just in time and returns accurate elements.
 		getFocusElement: -> 
+
 			return @$el.querySelector(@focusElement) if @focusElement
 			return @$refs.smartLinkRef.$el || @$refs.smartLinkRef
 
 		# Set focus to focusElement
 		setFocusToUs: ->
+
 			el = @getFocusElement()
 			el.focus()
 			# console.log 'setFocusToUs', el.innerText, el
@@ -222,6 +231,7 @@ export default
 			# el.setAttribute('data-focus-visible-added', true)
 
 	watch:
+
 		focusedItemIndex: ->
 			if @focusedItemIndex == @index
 				# console.log 'vue-nav-item', @id, 'focusedItemIndex', @index

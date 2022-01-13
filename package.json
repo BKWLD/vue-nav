@@ -7,7 +7,7 @@
   "author": "Jonathan Jahr <jonjahr@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "body-scroll-lock": "^4.0.0-beta.0",
+    "body-scroll-lock": "^3.1.5",
     "tiny-emitter": "^2.1.0",
     "vue-reactive-provide": "^0.3.0"
   }

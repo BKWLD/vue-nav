@@ -33,7 +33,7 @@ export default
 			event.stopPropagation()
 			event.preventDefault()
 			# Else, open the subnav.
-			# console.log 'onReturnKey 2'
+			# console.log 'onReturnKey: setActiveSubnavIndex', {id: @id}
 			@setActiveSubnavIndex index
 
 		##################################################################

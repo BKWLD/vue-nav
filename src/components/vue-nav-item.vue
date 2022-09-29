@@ -14,7 +14,7 @@ component(
 	//- Inner element (smart-link, div, or button)
 	component.vue-nav-item(
 		:is='innerElement'
-		v-bind='smartLinkProps'
+		v-bind='computedInnerElementProps'
 		ref='smartLinkRef'
 	)
 
@@ -87,6 +87,10 @@ export default
 			type: Boolean
 			default: false
 
+		# Optional props for the inner element
+		innerElementProps: 
+			type: Object
+
 
 	computed:
 
@@ -114,6 +118,10 @@ export default
 			'aria-expanded': @index == @activeSubnavIndex
 			# Disable this nav item if it has no url and no subnav.
 			# disabled: if (!@url && !@hasSubnav) then true else false
+
+		computedInnerElementProps: -> 
+			if @innerElementProps then {...@smartLinkProps, ...@innerElementProps}
+			else @smartLinkProps
 		
 		innerElement: ->
 			if @url then return 'smart-link'

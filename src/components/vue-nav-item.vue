@@ -104,20 +104,24 @@ export default
 		subnavFocusElements: -> @vueNavInject.subnavFocusElements
 
 		hasSubnav: -> 
-			# if @id=='nav-mobile-2' then console.log 'hasSubnav', @subnavFocusElements[@index]
 			if @subnavFocusElements?[@index] then true else false
 
 		# Props for the smart-link component
 		smartLinkProps: ->
-			class: @classes
-			role: 'menuitem'
-			to: @url
-			'data-vue-nav-item-index': @index
-			tabindex: @tabindex
-			'aria-haspopup': !!@url
-			'aria-expanded': @index == @activeSubnavIndex
+			hasSubNav = !@url
+			result = 
+				class: @classes
+				role: 'menuitem'
+				to: @url
+				'data-vue-nav-item-index': @index
+				tabindex: @tabindex
+				'aria-haspopup': hasSubNav
+			
+			if hasSubNav then result['aria-expanded'] = "#{ @index == @activeSubnavIndex }"
 			# Disable this nav item if it has no url and no subnav.
 			# disabled: if (!@url && !@hasSubnav) then true else false
+
+			return result
 
 		computedInnerElementProps: -> 
 			if @innerElementProps then {...@smartLinkProps, ...@innerElementProps}

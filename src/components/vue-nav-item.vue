@@ -9,6 +9,7 @@ component(
 	@click='onClick'
 	@focusin='onFocus'
 	@focusout='onBlur'
+	v-bind='parentProps'
 )
 
 	//- Inner element (smart-link, div, or button)
@@ -106,6 +107,17 @@ export default
 		hasSubnav: -> 
 			if @subnavFocusElements?[@index] then true else false
 
+		parentProps: -> 
+				hasSubNav = !@url
+				result = 
+					'aria-haspopup': hasSubNav
+				
+				if hasSubNav then result['aria-expanded'] = "#{ @index == @activeSubnavIndex }"
+				# Disable this nav item if it has no url and no subnav.
+				# disabled: if (!@url && !@hasSubnav) then true else false
+
+				return result
+
 		# Props for the smart-link component
 		smartLinkProps: ->
 			hasSubNav = !@url
@@ -115,9 +127,9 @@ export default
 				to: @url
 				'data-vue-nav-item-index': @index
 				tabindex: @tabindex
-				'aria-haspopup': hasSubNav
+				# 'aria-haspopup': hasSubNav
 			
-			if hasSubNav then result['aria-expanded'] = "#{ @index == @activeSubnavIndex }"
+			# if hasSubNav then result['aria-expanded'] = "#{ @index == @activeSubnavIndex }"
 			# Disable this nav item if it has no url and no subnav.
 			# disabled: if (!@url && !@hasSubnav) then true else false
 

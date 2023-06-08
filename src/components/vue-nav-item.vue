@@ -9,6 +9,7 @@ component(
 	@click='onClick'
 	@focusin='onFocus'
 	@focusout='onBlur'
+	role="menuitem"
 )
 
 	//- Inner element (smart-link, div, or button)
@@ -111,7 +112,6 @@ export default
 			hasSubNav = !@url
 			result = 
 				class: @classes
-				role: 'menuitem'
 				to: @url
 				'data-vue-nav-item-index': @index
 				tabindex: @tabindex
